@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/slack-go/slack"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -96,6 +97,39 @@ func TestUnitCheckTranscribable(t *testing.T) {
 	err = checkTranscribable(&slack.File{Mimetype: "audio/mp4", Size: maxTranscribeBytes + 1})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "exceeds")
+}
+
+func TestUnitParseParamsToolTranscribe(t *testing.T) {
+	ch := newUploadHandler()
+	req := func(args map[string]any) mcp.CallToolRequest {
+		r := mcp.CallToolRequest{}
+		r.Params.Name = "attachment_transcribe"
+		r.Params.Arguments = args
+		return r
+	}
+
+	t.Run("needs the endpoint", func(t *testing.T) {
+		setEnvUpload(t, "SLACK_MCP_TRANSCRIBE_URL", "")
+		_, err := ch.parseParamsToolTranscribe(req(map[string]any{"file_id": "F1"}))
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "SLACK_MCP_TRANSCRIBE_URL")
+	})
+
+	t.Run("needs file_id", func(t *testing.T) {
+		setEnvUpload(t, "SLACK_MCP_TRANSCRIBE_URL", "http://127.0.0.1:8790/v1/audio/transcriptions")
+		_, err := ch.parseParamsToolTranscribe(req(map[string]any{}))
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "file_id")
+	})
+
+	t.Run("valid", func(t *testing.T) {
+		setEnvUpload(t, "SLACK_MCP_TRANSCRIBE_URL", "http://127.0.0.1:8790/v1/audio/transcriptions")
+		p, err := ch.parseParamsToolTranscribe(req(map[string]any{"file_id": "F1", "language": "en"}))
+		require.NoError(t, err)
+		assert.Equal(t, "http://127.0.0.1:8790/v1/audio/transcriptions", p.endpoint)
+		assert.Equal(t, "F1", p.fileID)
+		assert.Equal(t, "en", p.language)
+	})
 }
 
 func TestUnitTranscriptionJSONShape(t *testing.T) {
