@@ -257,6 +257,33 @@ Provide the content in exactly one of three ways: `file_path`, `content` or `con
 
 Maximum upload size is 100MB. Works in stealth mode (`xoxc`/`xoxd`) as well as with OAuth and bot tokens.
 
+### 20. conversations_edit_message
+Edit a message you posted earlier. Slack only allows editing your own messages; the new content fully replaces the old one.
+
+> **Note:** Editing is disabled by default for safety. To enable, set the `SLACK_MCP_EDIT_MESSAGE_TOOL` environment variable, same allowlist semantics as `SLACK_MCP_ADD_MESSAGE_TOOL`.
+
+- **Parameters:**
+  - `channel_id` (string, required): ID of the conversation in format `Cxxxxxxxxxx` or `Dxxxxxxxxxx`, or its name starting with `#...` or `@...`.
+  - `ts` (string, required): Timestamp of the message to edit in format `1234567890.123456`, from `msgID` in history or the `ts` returned by `conversations_add_message`. A reply in a thread has its own ts, it is not the `thread_ts`.
+  - `text` (string, optional): New message text in `content_type` format.
+  - `content_type` (string, default: "text/markdown"): `text/markdown` or `text/plain`. A plain-text edit also clears the message blocks, otherwise Slack would keep rendering the old rich text.
+  - `blocks` (string, optional): Raw Slack Block Kit JSON array, takes precedence over `text`/`content_type` for rendering.
+
+Slack errors are explained in plain words: `cant_update_message` (not your message), `edit_window_closed` (workspace edit window closed), `msg_too_long` (over 4000 characters).
+
+### 21. attachment_transcribe
+Transcribe a voice message or any audio/video attachment to text through an OpenAI-compatible transcription endpoint, for example a local Whisper gateway.
+
+> **Note:** Registered only when `SLACK_MCP_TRANSCRIBE_URL` is set to the full endpoint URL, e.g. `http://127.0.0.1:8790/v1/audio/transcriptions`.
+
+Find candidates in history: the `AttachmentTypes` column lists mime types in the same order as `AttachmentIDs`; voice messages and recordings start with `audio/` or `video/`.
+
+- **Parameters:**
+  - `file_id` (string, required): Attachment ID in format `Fxxxxxxxxxx`.
+  - `language` (string, optional): ISO-639-1 code such as `ru` or `en`. Empty means autodetect.
+
+The file is downloaded to a temp file and streamed to the endpoint as multipart (`file`, optional `language`), never held in memory. The endpoint must answer JSON with `text`; `language`, `duration` and `provider` are passed through when present. Maximum file size is 100MB.
+
 ## Resources
 
 The Slack MCP Server exposes two special directory resources for easy access to workspace metadata:
@@ -315,12 +342,14 @@ Fetches a CSV directory of all users in the workspace.
 | `SLACK_MCP_ATTACHMENT_TOOL`      | No        | `nil`                     | Enable the `attachment_get_data` tool by setting to `true`, `1`, or `yes`. Does not support channel-level restrictions. If empty, the tool is only registered when explicitly listed in `SLACK_MCP_ENABLED_TOOLS`. |
 | `SLACK_MCP_FILE_UPLOAD_TOOL`     | No        | `nil`                     | Enable the `file_upload` tool by setting it to `true` for all channels, a comma-separated list of channel IDs to whitelist specific channels, or use `!` before a channel ID to allow all except specified ones. If empty, the tool is only registered when explicitly listed in `SLACK_MCP_ENABLED_TOOLS`. |
 | `SLACK_MCP_FILE_UPLOAD_PATHS`    | No        | `nil`                     | Comma-separated list of directories the server may read when `file_upload` is called with `file_path`, e.g. `/home/user/Pictures,/tmp`. Paths are resolved through symlinks and must stay inside one of these roots. When unset, `file_path` is rejected entirely and only `content` / `content_base64` uploads work. Use `/` to allow any absolute path. |
+| `SLACK_MCP_EDIT_MESSAGE_TOOL`    | No        | `nil`                     | Enable the `conversations_edit_message` tool by setting it to `true` for all channels, a comma-separated list of channel IDs to whitelist specific channels, or use `!` before a channel ID to allow all except specified ones. If empty, the tool is only registered when explicitly listed in `SLACK_MCP_ENABLED_TOOLS`. |
+| `SLACK_MCP_TRANSCRIBE_URL`       | No        | `nil`                     | Full URL of an OpenAI-compatible transcription endpoint, e.g. `http://127.0.0.1:8790/v1/audio/transcriptions`. When set, the `attachment_transcribe` tool is registered. |
 | `SLACK_MCP_MARK_TOOL`             | No        | `nil`                     | Enable the `conversations_mark` tool by setting to `true` or `1`. Disabled by default to prevent accidental marking of messages as read.                                                                                                                                                  |
 | `SLACK_MCP_USERS_CACHE`           | No        | `~/Library/Caches/slack-mcp-server/users_cache.json` (macOS)<br>`~/.cache/slack-mcp-server/users_cache.json` (Linux)<br>`%LocalAppData%/slack-mcp-server/users_cache.json` (Windows) | Path to the users cache file. Used to cache Slack user information to avoid repeated API calls on startup. |
 | `SLACK_MCP_CHANNELS_CACHE`        | No        | `~/Library/Caches/slack-mcp-server/channels_cache_v2.json` (macOS)<br>`~/.cache/slack-mcp-server/channels_cache_v2.json` (Linux)<br>`%LocalAppData%/slack-mcp-server/channels_cache_v2.json` (Windows) | Path to the channels cache file. Used to cache Slack channel information to avoid repeated API calls on startup. |
 | `SLACK_MCP_LOG_LEVEL`             | No        | `info`                    | Log-level for stdout or stderr. Valid values are: `debug`, `info`, `warn`, `error`, `panic` and `fatal`                                                                                                                                                                                   |
 | `SLACK_MCP_GOVSLACK`              | No        | `nil`                     | Set to `true` to enable [GovSlack](https://slack.com/solutions/govslack) mode. Routes API calls to `slack-gov.com` endpoints instead of `slack.com` for FedRAMP-compliant government workspaces.                                                                                          |
-| `SLACK_MCP_ENABLED_TOOLS`         | No        | `nil`                     | Comma-separated list of tools to register. If empty, all read-only tools and usergroups tools are registered; write tools (`conversations_add_message`, `reactions_add`, `reactions_remove`, `attachment_get_data`, `file_upload`) require their specific env var OR must be explicitly listed here. When a write tool is listed here, it's enabled without channel restrictions. Available tools: `conversations_history`, `conversations_replies`, `conversations_add_message`, `reactions_add`, `reactions_remove`, `attachment_get_data`, `file_upload`, `conversations_search_messages`, `channels_list`, `usergroups_list`, `usergroups_me`, `usergroups_create`, `usergroups_update`, `usergroups_users_update`. |
+| `SLACK_MCP_ENABLED_TOOLS`         | No        | `nil`                     | Comma-separated list of tools to register. If empty, all read-only tools and usergroups tools are registered; write tools (`conversations_add_message`, `reactions_add`, `reactions_remove`, `attachment_get_data`, `file_upload`, `conversations_edit_message`, `attachment_transcribe`) require their specific env var OR must be explicitly listed here. When a write tool is listed here, it's enabled without channel restrictions. Available tools: `conversations_history`, `conversations_replies`, `conversations_add_message`, `conversations_edit_message`, `reactions_add`, `reactions_remove`, `attachment_get_data`, `file_upload`, `attachment_transcribe`, `conversations_search_messages`, `channels_list`, `usergroups_list`, `usergroups_me`, `usergroups_create`, `usergroups_update`, `usergroups_users_update`. |
 
 *You need one of: `xoxp` (user), `xoxb` (bot), or both `xoxc`/`xoxd` tokens for authentication.
 
