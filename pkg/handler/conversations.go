@@ -56,10 +56,11 @@ type Message struct {
 	Permalink     string `json:"permalink,omitempty"`
 	Reactions     string `json:"reactions,omitempty"`
 	BotName       string `json:"botName,omitempty"`
-	FileCount     int    `json:"fileCount,omitempty"`
-	AttachmentIDs string `json:"attachmentIDs,omitempty"`
-	HasMedia      bool   `json:"hasMedia,omitempty"`
-	Cursor        string `json:"cursor"`
+	FileCount       int    `json:"fileCount,omitempty"`
+	AttachmentIDs   string `json:"attachmentIDs,omitempty"`
+	AttachmentTypes string `json:"attachmentTypes,omitempty"`
+	HasMedia        bool   `json:"hasMedia,omitempty"`
+	Cursor          string `json:"cursor"`
 }
 
 type User struct {
@@ -316,6 +317,25 @@ func editMessageError(err error) error {
 		return fmt.Errorf("slack refused the edit (msg_too_long): text is longer than 4000 characters")
 	}
 	return err
+}
+
+// attachmentFields lists file IDs (with names) and their mime types in the same order,
+// so an agent can tell a voice message from a PDF before downloading anything.
+func attachmentFields(files []slack.File) (string, string) {
+	var ids, types []string
+	for _, f := range files {
+		if f.Name != "" {
+			ids = append(ids, fmt.Sprintf("%s (%s)", f.ID, f.Name))
+		} else {
+			ids = append(ids, f.ID)
+		}
+		mimetype := f.Mimetype
+		if mimetype == "" {
+			mimetype = "unknown"
+		}
+		types = append(types, mimetype)
+	}
+	return strings.Join(ids, ", "), strings.Join(types, ", ")
 }
 
 // messageContentOptions turns text, content_type and raw blocks into Slack message options.
@@ -1664,15 +1684,7 @@ func (ch *ConversationsHandler) convertMessagesFromHistory(ctx context.Context, 
 		fileCount := len(msg.Files)
 		hasMedia := fileCount > 0 || hasImageBlocks(msg.Blocks)
 
-		var attachmentIDs []string
-		for _, f := range msg.Files {
-			if f.Name != "" {
-				attachmentIDs = append(attachmentIDs, fmt.Sprintf("%s (%s)", f.ID, f.Name))
-			} else {
-				attachmentIDs = append(attachmentIDs, f.ID)
-			}
-		}
-		attachmentIDsStr := strings.Join(attachmentIDs, ", ")
+		attachmentIDsStr, attachmentTypesStr := attachmentFields(msg.Files)
 
 		messages = append(messages, Message{
 			MsgID:         msg.Timestamp,
@@ -1685,9 +1697,10 @@ func (ch *ConversationsHandler) convertMessagesFromHistory(ctx context.Context, 
 			Time:          timestamp,
 			Reactions:     reactionsString,
 			BotName:       botName,
-			FileCount:     fileCount,
-			AttachmentIDs: attachmentIDsStr,
-			HasMedia:      hasMedia,
+			FileCount:       fileCount,
+			AttachmentIDs:   attachmentIDsStr,
+			AttachmentTypes: attachmentTypesStr,
+			HasMedia:        hasMedia,
 		})
 	}
 
