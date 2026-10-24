@@ -45,17 +45,17 @@ var validFilterKeys = map[string]struct{}{
 }
 
 type Message struct {
-	MsgID         string `json:"msgID"`
-	UserID        string `json:"userID"`
-	UserName      string `json:"userUser"`
-	RealName      string `json:"realName"`
-	Channel       string `json:"channelID"`
-	ThreadTs      string `json:"ThreadTs"`
-	Text          string `json:"text"`
-	Time          string `json:"time"`
-	Permalink     string `json:"permalink,omitempty"`
-	Reactions     string `json:"reactions,omitempty"`
-	BotName       string `json:"botName,omitempty"`
+	MsgID           string `json:"msgID"`
+	UserID          string `json:"userID"`
+	UserName        string `json:"userUser"`
+	RealName        string `json:"realName"`
+	Channel         string `json:"channelID"`
+	ThreadTs        string `json:"ThreadTs"`
+	Text            string `json:"text"`
+	Time            string `json:"time"`
+	Permalink       string `json:"permalink,omitempty"`
+	Reactions       string `json:"reactions,omitempty"`
+	BotName         string `json:"botName,omitempty"`
 	FileCount       int    `json:"fileCount,omitempty"`
 	AttachmentIDs   string `json:"attachmentIDs,omitempty"`
 	AttachmentTypes string `json:"attachmentTypes,omitempty"`
@@ -1679,16 +1679,16 @@ func (ch *ConversationsHandler) convertMessagesFromHistory(ctx context.Context, 
 		attachmentIDsStr, attachmentTypesStr := attachmentFields(msg.Files)
 
 		messages = append(messages, Message{
-			MsgID:         msg.Timestamp,
-			UserID:        msg.User,
-			UserName:      userName,
-			RealName:      realName,
-			Text:          text.ProcessText(msgText),
-			Channel:       channel,
-			ThreadTs:      msg.ThreadTimestamp,
-			Time:          timestamp,
-			Reactions:     reactionsString,
-			BotName:       botName,
+			MsgID:           msg.Timestamp,
+			UserID:          msg.User,
+			UserName:        userName,
+			RealName:        realName,
+			Text:            text.ProcessText(msgText),
+			Channel:         channel,
+			ThreadTs:        msg.ThreadTimestamp,
+			Time:            timestamp,
+			Reactions:       reactionsString,
+			BotName:         botName,
 			FileCount:       fileCount,
 			AttachmentIDs:   attachmentIDsStr,
 			AttachmentTypes: attachmentTypesStr,

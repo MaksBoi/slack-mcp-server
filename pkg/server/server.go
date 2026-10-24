@@ -29,7 +29,7 @@ const (
 	ToolConversationsReplies        = "conversations_replies"
 	ToolConversationsAddMessage     = "conversations_add_message"
 	ToolConversationsEditMessage    = "conversations_edit_message"
-	ToolReactionsAdd               = "reactions_add"
+	ToolReactionsAdd                = "reactions_add"
 	ToolReactionsRemove             = "reactions_remove"
 	ToolAttachmentGetData           = "attachment_get_data"
 	ToolFileUpload                  = "file_upload"
