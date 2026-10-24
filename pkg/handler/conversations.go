@@ -546,15 +546,7 @@ func (ch *ConversationsHandler) FilesGetHandler(ctx context.Context, request mcp
 	}
 
 	var buf bytes.Buffer
-	downloadURL := fileInfo.URLPrivateDownload
-	if downloadURL == "" {
-		downloadURL = fileInfo.URLPrivate
-	}
-	if downloadURL == "" {
-		return nil, errors.New("file has no downloadable URL")
-	}
-
-	err = ch.apiProvider.Slack().GetFileContext(ctx, downloadURL, &buf)
+	err = ch.downloadSlackFile(ctx, fileInfo, &buf)
 	if err != nil {
 		ch.logger.Error("Slack GetFileContext failed", zap.Error(err))
 		return nil, err
