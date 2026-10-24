@@ -224,31 +224,11 @@ func (ch *ConversationsHandler) ConversationsAddMessageHandler(ctx context.Conte
 		options = append(options, slack.MsgOptionTS(params.threadTs))
 	}
 
-	if params.blocks != nil {
-		// Raw blocks provided: use them directly. If text is also provided, it
-		// serves as the notification/fallback text.
-		options = append(options, slack.MsgOptionBlocks(params.blocks...))
-		if params.text != "" {
-			options = append(options, slack.MsgOptionText(params.text, false))
-		}
-	} else {
-		switch params.contentType {
-		case "text/plain":
-			options = append(options, slack.MsgOptionDisableMarkdown())
-			options = append(options, slack.MsgOptionText(params.text, false))
-		case "text/markdown":
-			blocks, err := slackGoUtil.ConvertMarkdownTextToBlocks(params.text)
-			if err != nil {
-				ch.logger.Warn("Markdown parsing error", zap.Error(err))
-				options = append(options, slack.MsgOptionDisableMarkdown())
-				options = append(options, slack.MsgOptionText(params.text, false))
-			} else {
-				options = append(options, slack.MsgOptionBlocks(blocks...))
-			}
-		default:
-			return nil, errors.New("content_type must be either 'text/plain' or 'text/markdown'")
-		}
+	contentOptions, err := ch.messageContentOptions(params.text, params.contentType, params.blocks, false)
+	if err != nil {
+		return nil, err
 	}
+	options = append(options, contentOptions...)
 
 	unfurlOpt := os.Getenv("SLACK_MCP_ADD_MESSAGE_UNFURLING")
 	if text.IsUnfurlingEnabled(params.text, unfurlOpt, ch.logger) {
@@ -282,6 +262,52 @@ func (ch *ConversationsHandler) ConversationsAddMessageHandler(ctx context.Conte
 		return mcp.NewToolResultText(fmt.Sprintf("Successfully posted message to channel %s in thread %s (ts=%s)", respChannel, params.threadTs, respTimestamp)), nil
 	}
 	return mcp.NewToolResultText(fmt.Sprintf("Successfully posted message to channel %s (ts=%s)", respChannel, respTimestamp)), nil
+}
+
+// messageContentOptions turns text, content_type and raw blocks into Slack message options.
+// Shared by conversations_add_message and conversations_edit_message. An edit with plain text
+// also sends an empty blocks array, otherwise Slack keeps rendering the old blocks. An edit with
+// markdown also sends the text, so the notification fallback is not left stale.
+func (ch *ConversationsHandler) messageContentOptions(msgText, contentType string, blocks []slack.Block, edit bool) ([]slack.MsgOption, error) {
+	var options []slack.MsgOption
+
+	if blocks != nil {
+		// Raw blocks provided: use them directly. If text is also provided, it
+		// serves as the notification/fallback text.
+		options = append(options, slack.MsgOptionBlocks(blocks...))
+		if msgText != "" {
+			options = append(options, slack.MsgOptionText(msgText, false))
+		}
+		return options, nil
+	}
+
+	plain := func() {
+		options = append(options, slack.MsgOptionDisableMarkdown())
+		options = append(options, slack.MsgOptionText(msgText, false))
+		if edit {
+			// A non-nil empty slice: MsgOptionBlocks ignores nil and would keep the old blocks.
+			options = append(options, slack.MsgOptionBlocks([]slack.Block{}...))
+		}
+	}
+
+	switch contentType {
+	case "text/plain":
+		plain()
+	case "text/markdown":
+		converted, err := slackGoUtil.ConvertMarkdownTextToBlocks(msgText)
+		if err != nil {
+			ch.logger.Warn("Markdown parsing error", zap.Error(err))
+			plain()
+		} else {
+			options = append(options, slack.MsgOptionBlocks(converted...))
+			if edit {
+				options = append(options, slack.MsgOptionText(msgText, false))
+			}
+		}
+	default:
+		return nil, errors.New("content_type must be either 'text/plain' or 'text/markdown'")
+	}
+	return options, nil
 }
 
 // ReactionsAddHandler adds an emoji reaction to a message
