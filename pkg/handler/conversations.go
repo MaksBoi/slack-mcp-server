@@ -314,7 +314,7 @@ func editMessageError(err error) error {
 	case "edit_window_closed":
 		return fmt.Errorf("slack refused the edit (edit_window_closed): the workspace edit window for this message has closed")
 	case "msg_too_long":
-		return fmt.Errorf("slack refused the edit (msg_too_long): text is longer than 4000 characters")
+		return fmt.Errorf("slack refused the edit (msg_too_long): text is too long for Slack, shorten it or split it into several messages")
 	}
 	return err
 }

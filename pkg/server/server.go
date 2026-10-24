@@ -228,7 +228,7 @@ func NewMCPServer(provider *provider.ApiProvider, logger *zap.Logger, enabledToo
 				mcp.Description("Content type of the new text. Default is 'text/markdown'. Allowed values: 'text/markdown', 'text/plain'. Ignored when blocks is provided."),
 			),
 			mcp.WithString("blocks",
-				mcp.Description("Raw Slack Block Kit JSON array for rich message formatting. When provided, this takes precedence over text/content_type for rendering. The text parameter becomes the notification fallback text."),
+				mcp.Description("Raw Slack Block Kit JSON array for rich message formatting. When provided, this takes precedence over text/content_type for rendering. Pass text as well: without it the notification and search fallback keeps the old text."),
 			),
 		), conversationsHandler.ConversationsEditMessageHandler)
 	}

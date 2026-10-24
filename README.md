@@ -267,9 +267,9 @@ Edit a message you posted earlier. Slack only allows editing your own messages; 
   - `ts` (string, required): Timestamp of the message to edit in format `1234567890.123456`, from `msgID` in history or the `ts` returned by `conversations_add_message`. A reply in a thread has its own ts, it is not the `thread_ts`.
   - `text` (string, optional): New message text in `content_type` format.
   - `content_type` (string, default: "text/markdown"): `text/markdown` or `text/plain`. A plain-text edit also clears the message blocks, otherwise Slack would keep rendering the old rich text.
-  - `blocks` (string, optional): Raw Slack Block Kit JSON array, takes precedence over `text`/`content_type` for rendering.
+  - `blocks` (string, optional): Raw Slack Block Kit JSON array, takes precedence over `text`/`content_type` for rendering. Pass `text` as well, otherwise the notification and search fallback keeps the old text.
 
-Slack errors are explained in plain words: `cant_update_message` (not your message), `edit_window_closed` (workspace edit window closed), `msg_too_long` (over 4000 characters).
+Slack errors are explained in plain words: `cant_update_message` (not your message), `edit_window_closed` (workspace edit window closed), `msg_too_long` (text too long).
 
 ### 21. attachment_transcribe
 Transcribe a voice message or any audio/video attachment to text through an OpenAI-compatible transcription endpoint, for example a local Whisper gateway.

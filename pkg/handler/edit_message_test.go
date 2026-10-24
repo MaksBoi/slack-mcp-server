@@ -16,7 +16,7 @@ func TestUnitEditMessageError(t *testing.T) {
 	cases := map[string]string{
 		"cant_update_message": "only your own messages",
 		"edit_window_closed":  "edit window",
-		"msg_too_long":        "4000 characters",
+		"msg_too_long":        "text is too long",
 	}
 	for code, want := range cases {
 		t.Run(code, func(t *testing.T) {
