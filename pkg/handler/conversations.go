@@ -272,6 +272,52 @@ func (ch *ConversationsHandler) ConversationsAddMessageHandler(ctx context.Conte
 	return mcp.NewToolResultText(fmt.Sprintf("Successfully posted message to channel %s (ts=%s)", respChannel, respTimestamp)), nil
 }
 
+// ConversationsEditMessageHandler edits a message the authenticated user posted earlier.
+func (ch *ConversationsHandler) ConversationsEditMessageHandler(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	ch.logger.Debug("ConversationsEditMessageHandler called", zap.Any("params", request.Params))
+
+	if ready, err := ch.apiProvider.IsReady(); !ready {
+		ch.logger.Error("API provider not ready", zap.Error(err))
+		return nil, err
+	}
+
+	params, err := ch.parseParamsToolEditMessage(ctx, request)
+	if err != nil {
+		ch.logger.Error("Failed to parse edit-message params", zap.Error(err))
+		return nil, err
+	}
+
+	options, err := ch.messageContentOptions(params.text, params.contentType, params.blocks, true)
+	if err != nil {
+		return nil, err
+	}
+
+	respChannel, respTimestamp, _, err := ch.apiProvider.Slack().UpdateMessageContext(ctx, params.channel, params.ts, options...)
+	if err != nil {
+		ch.logger.Error("Slack UpdateMessageContext failed", zap.Error(err))
+		return nil, editMessageError(err)
+	}
+
+	return mcp.NewToolResultText(fmt.Sprintf("Successfully edited message in channel %s (ts=%s)", respChannel, respTimestamp)), nil
+}
+
+// editMessageError explains the chat.update refusals an agent can act on.
+func editMessageError(err error) error {
+	var slackErr slack.SlackErrorResponse
+	if !errors.As(err, &slackErr) {
+		return err
+	}
+	switch slackErr.Err {
+	case "cant_update_message":
+		return fmt.Errorf("slack refused the edit (cant_update_message): only your own messages can be edited")
+	case "edit_window_closed":
+		return fmt.Errorf("slack refused the edit (edit_window_closed): the workspace edit window for this message has closed")
+	case "msg_too_long":
+		return fmt.Errorf("slack refused the edit (msg_too_long): text is longer than 4000 characters")
+	}
+	return err
+}
+
 // messageContentOptions turns text, content_type and raw blocks into Slack message options.
 // Shared by conversations_add_message and conversations_edit_message. An edit with plain text
 // also sends an empty blocks array, otherwise Slack keeps rendering the old blocks. An edit with

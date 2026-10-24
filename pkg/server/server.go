@@ -28,7 +28,8 @@ const (
 	ToolConversationsHistory        = "conversations_history"
 	ToolConversationsReplies        = "conversations_replies"
 	ToolConversationsAddMessage     = "conversations_add_message"
-	ToolReactionsAdd                = "reactions_add"
+	ToolConversationsEditMessage    = "conversations_edit_message"
+	ToolReactionsAdd               = "reactions_add"
 	ToolReactionsRemove             = "reactions_remove"
 	ToolAttachmentGetData           = "attachment_get_data"
 	ToolFileUpload                  = "file_upload"
@@ -54,6 +55,7 @@ var ValidToolNames = []string{
 	ToolConversationsHistory,
 	ToolConversationsReplies,
 	ToolConversationsAddMessage,
+	ToolConversationsEditMessage,
 	ToolReactionsAdd,
 	ToolReactionsRemove,
 	ToolAttachmentGetData,
@@ -201,6 +203,32 @@ func NewMCPServer(provider *provider.ApiProvider, logger *zap.Logger, enabledToo
 				mcp.Description("Raw Slack Block Kit JSON array for rich message formatting (rich_text lists, code blocks, etc.). When provided, this takes precedence over text/content_type for rendering. The text parameter becomes the notification fallback text."),
 			),
 		), conversationsHandler.ConversationsAddMessageHandler)
+	}
+
+	if shouldAddTool(ToolConversationsEditMessage, enabledTools, "SLACK_MCP_EDIT_MESSAGE_TOOL") {
+		s.AddTool(mcp.NewTool(ToolConversationsEditMessage,
+			mcp.WithDescription("Edit a message you posted earlier, by channel_id and the message ts. Slack only allows editing your own messages. The new content fully replaces the old one."),
+			mcp.WithTitleAnnotation("Edit Message"),
+			mcp.WithDestructiveHintAnnotation(true),
+			mcp.WithString("channel_id",
+				mcp.Required(),
+				mcp.Description("ID of the conversation in format Cxxxxxxxxxx or Dxxxxxxxxxx, or its name starting with #... or @... aka #general or @username_dm."),
+			),
+			mcp.WithString("ts",
+				mcp.Required(),
+				mcp.Description("Timestamp of the message to edit, in format 1234567890.123456. Take it from the msgID field of conversations_history or conversations_replies, or from the ts returned by conversations_add_message. A reply in a thread has its own ts, it is not the thread_ts."),
+			),
+			mcp.WithString("text",
+				mcp.Description("New message text in specified content_type format. Example: 'Hello, world!' for text/plain or '# Hello, world!' for text/markdown."),
+			),
+			mcp.WithString("content_type",
+				mcp.DefaultString("text/markdown"),
+				mcp.Description("Content type of the new text. Default is 'text/markdown'. Allowed values: 'text/markdown', 'text/plain'. Ignored when blocks is provided."),
+			),
+			mcp.WithString("blocks",
+				mcp.Description("Raw Slack Block Kit JSON array for rich message formatting. When provided, this takes precedence over text/content_type for rendering. The text parameter becomes the notification fallback text."),
+			),
+		), conversationsHandler.ConversationsEditMessageHandler)
 	}
 
 	if shouldAddTool(ToolReactionsAdd, enabledTools, "SLACK_MCP_REACTION_TOOL") {

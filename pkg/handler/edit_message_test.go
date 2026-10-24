@@ -2,12 +2,35 @@ package handler
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/mark3labs/mcp-go/mcp"
+	"github.com/slack-go/slack"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestUnitEditMessageError(t *testing.T) {
+	cases := map[string]string{
+		"cant_update_message": "only your own messages",
+		"edit_window_closed":  "edit window",
+		"msg_too_long":        "4000 characters",
+	}
+	for code, want := range cases {
+		t.Run(code, func(t *testing.T) {
+			err := editMessageError(fmt.Errorf("chat.update: %w", slack.SlackErrorResponse{Err: code}))
+			assert.Contains(t, err.Error(), want)
+			assert.Contains(t, err.Error(), code)
+		})
+	}
+
+	t.Run("other errors pass through", func(t *testing.T) {
+		orig := errors.New("channel_not_found")
+		assert.Equal(t, orig, editMessageError(orig))
+	})
+}
 
 func newEditRequest(args map[string]any) mcp.CallToolRequest {
 	req := mcp.CallToolRequest{}
